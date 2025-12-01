@@ -227,6 +227,7 @@ func _create_dice() -> void:
 	for i in range(5):
 		var ds = DiceSlotScene.instantiate()
 		ds.interactive = false  # Start disabled until game starts and it's our turn
+		ds.dice_toggled.connect(_on_dice_toggled)
 		dice_row.add_child(ds)
 		dice_slots.append(ds)
 
@@ -949,15 +950,24 @@ func _handle_roll_result(event: Dictionary) -> void:
 	var new_dice: Array = event.get("dice", dice_values)
 	rolls_left = int(event.get("rolls_left", rolls_left))
 	var player_id: String = str(event.get("player_id", ""))
+	var held_indices: Array = event.get("held_indices", [])
+	var is_local: bool = player_id == local_player_id
 	
 	get_node("/root/Logger").info("Dice rolled", {
 		"player_id": player_id,
 		"dice": new_dice,
 		"rolls_left": rolls_left,
-		"is_local": player_id == local_player_id,
+		"held_indices": held_indices,
+		"is_local": is_local,
 		"room_code": GameConfig.room_code,
 		"function": "_handle_roll_result"
 	})
+	
+	# Update held state for bots (show which dice they're holding)
+	if not is_local:
+		for i in range(5):
+			if i < dice_slots.size():
+				dice_slots[i].held = (i in held_indices)
 	
 	# Animate dice that changed (not held)
 	for i in range(5):
@@ -1195,6 +1205,24 @@ func _set_dice_interactive(enabled: bool) -> void:
 	for slot in dice_slots:
 		slot.interactive = enabled
 	roll_button.disabled = not enabled
+
+func _on_dice_toggled(_is_held: bool) -> void:
+	# Update previews when dice are held/unheld
+	if GameConfig.is_viewer:
+		return
+	if not _is_local_turn():
+		return
+	
+	# Only update previews if dice have been rolled at least once
+	# Check if any dice value is non-zero (dice have been rolled)
+	var has_rolled := false
+	for val in dice_values:
+		if val > 0:
+			has_rolled = true
+			break
+	
+	if has_rolled:
+		scorecard_panel.set_previews(dice_values)
 
 func _on_roll_pressed() -> void:
 	if GameConfig.is_viewer:

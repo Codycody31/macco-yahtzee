@@ -226,6 +226,8 @@ func _on_connection_state_changed(state: int, error: int) -> void:
 				"function": "_on_connection_state_changed"
 			})
 			status_log.append_text("[color=#e8736b]✗ Connection failed: %d[/color]\n" % error)
+			# Show error overlay for HTTP errors and return to main menu
+			_handle_connection_error(error)
 		GameNetwork.ConnectionState.DISCONNECTED:
 			# Check if disconnection was unexpected
 			if not _intentional_leave and error == ERR_CONNECTION_ERROR:
@@ -513,6 +515,40 @@ func _handle_room_ended(event: Dictionary) -> void:
 		_:
 			title = "Room Ended"
 			message = "The room has been closed."
+	
+	_show_error_overlay(title, message)
+
+func _handle_connection_error(error_code: int) -> void:
+	var title: String = "Connection Error"
+	var message: String = "Failed to connect to the server."
+	
+	# Map HTTP error codes to user-friendly messages
+	match error_code:
+		404:
+			title = "Room Not Found"
+			message = "The room code you entered does not exist. Please check the code and try again."
+		401:
+			title = "Unauthorized"
+			message = "Your credentials are invalid. Please try joining again."
+		403:
+			title = "Access Denied"
+			message = "You do not have permission to join this room."
+		400:
+			title = "Invalid Request"
+			message = "The request was invalid. Please try again."
+		500, 502, 503, 504:
+			title = "Server Error"
+			message = "The server encountered an error. Please try again later."
+		ERR_CONNECTION_ERROR:
+			title = "Connection Error"
+			message = "Could not connect to the server. Please check your internet connection."
+		ERR_PARSE_ERROR:
+			title = "Parse Error"
+			message = "Received invalid data from the server. Please try again."
+		_:
+			# Generic error message with code
+			title = "Connection Failed"
+			message = "Failed to connect (Error code: %d). Please try again." % error_code
 	
 	_show_error_overlay(title, message)
 

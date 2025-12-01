@@ -220,7 +220,7 @@ func _handle_request_roll(event: Dictionary) -> void:
 		})
 		return
 	
-	var held: Array = event.get("held_dice", [])
+	var held: Array = event.get("held_indices", event.get("held_dice", []))
 	var current_dice: Array = player_dice.get(player_id, [0, 0, 0, 0, 0])
 	var new_dice: Array[int] = []
 	
@@ -370,61 +370,319 @@ func _on_opponent_turn_timer() -> void:
 
 
 func _simulate_bot_roll(bot_id: String) -> void:
-	# Roll dice
-	var dice: Array[int] = []
+	# Start bot's turn with first roll
+	await _bot_turn_loop(bot_id)
+
+
+func _bot_turn_loop(bot_id: String) -> void:
+	var rolls_remaining: int = 3
+	var current_dice: Array[int] = []
+	var used: Array = player_used_categories.get(bot_id, [])
+	
+	# First roll - roll all dice
+	current_dice = []
 	for i in range(5):
-		dice.append(_roll_die())
+		current_dice.append(_roll_die())
+	rolls_remaining -= 1
 	
-	player_dice[bot_id] = dice
-	rolls_left[bot_id] = 2
+	player_dice[bot_id] = current_dice
+	rolls_left[bot_id] = rolls_remaining
 	
-	get_node("/root/Logger").debug("Bot rolled dice", {
+	get_node("/root/Logger").debug("Bot rolled dice (roll 1)", {
 		"bot_id": bot_id,
 		"bot_name": players.get(bot_id, "Unknown"),
-		"dice": dice,
-		"function": "_simulate_bot_roll"
+		"dice": current_dice,
+		"rolls_left": rolls_remaining,
+		"function": "_bot_turn_loop"
 	})
 	
+	# Emit first roll result (no dice held yet)
 	_emit_event({
 		"type": "ROLL_RESULT",
 		"player_id": bot_id,
-		"dice": dice,
-		"rolls_left": 2
+		"dice": current_dice,
+		"rolls_left": rolls_remaining,
+		"held_indices": []
 	})
 	
-	# Wait then choose a category
 	await get_tree().create_timer(1.0).timeout
 	
-	# Pick best available category
-	var used: Array = player_used_categories.get(bot_id, [])
+	# Loop for up to 3 rolls
+	while rolls_remaining > 0:
+		# Evaluate current dice and decide: roll again or choose category
+		var decision: Dictionary = _bot_decide_action(bot_id, current_dice, rolls_remaining, used)
+		
+		if decision.should_choose_category:
+			# Choose category and end turn
+			_bot_choose_category(bot_id, decision.category, current_dice)
+			return
+		
+		# Show which dice bot is holding (for next roll)
+		var held_indices: Array[int] = decision.held_indices
+		
+		# Emit roll result showing current dice and which will be held
+		_emit_event({
+			"type": "ROLL_RESULT",
+			"player_id": bot_id,
+			"dice": current_dice,
+			"rolls_left": rolls_remaining,
+			"held_indices": held_indices
+		})
+		
+		await get_tree().create_timer(1.2).timeout  # Pause to show held dice
+		
+		# Roll again with optimal holds
+		current_dice = _bot_roll_with_holds(current_dice, held_indices)
+		rolls_remaining -= 1
+		player_dice[bot_id] = current_dice
+		rolls_left[bot_id] = rolls_remaining
+		
+		get_node("/root/Logger").debug("Bot rolled dice (roll %d)" % (3 - rolls_remaining + 1), {
+			"bot_id": bot_id,
+			"bot_name": players.get(bot_id, "Unknown"),
+			"dice": current_dice,
+			"held_indices": held_indices,
+			"rolls_left": rolls_remaining,
+			"function": "_bot_turn_loop"
+		})
+		
+		# Emit final roll result (no more rolls, so no held dice)
+		if rolls_remaining == 0:
+			_emit_event({
+				"type": "ROLL_RESULT",
+				"player_id": bot_id,
+				"dice": current_dice,
+				"rolls_left": 0,
+				"held_indices": []
+			})
+			await get_tree().create_timer(1.0).timeout
+	
+	# After 3 rolls, must choose a category
+	var final_decision: Dictionary = _bot_decide_action(bot_id, current_dice, 0, used)
+	_bot_choose_category(bot_id, final_decision.category, current_dice)
+
+
+func _bot_roll_with_holds(current_dice: Array[int], held_indices: Array[int]) -> Array[int]:
+	var new_dice: Array[int] = []
+	for i in range(5):
+		if i in held_indices:
+			new_dice.append(current_dice[i])
+		else:
+			new_dice.append(_roll_die())
+	return new_dice
+
+
+func _bot_decide_action(bot_id: String, dice: Array[int], rolls_left: int, used_categories: Array) -> Dictionary:
+	# Calculate current best score
+	var scores: Dictionary = ScoreLogic.score_all(dice)
 	var best_category: String = ""
 	var best_score: int = -1
+	var best_strategic_value: float = -1.0
 	
-	var int_dice: Array[int] = []
-	for d in dice:
-		int_dice.append(int(d))
-	var all_scores: Dictionary = ScoreLogic.score_all(int_dice)
-	
+	# Evaluate each available category
 	for cat in ScoreLogic.CATEGORIES:
-		if cat in used:
+		if cat in used_categories:
 			continue
-		var score: int = int(all_scores.get(cat, 0))
-		if score > best_score:
+		var score: int = int(scores.get(cat, 0))
+		var strategic_value: float = _bot_calculate_strategic_value(bot_id, cat, score, used_categories)
+		
+		if strategic_value > best_strategic_value:
+			best_strategic_value = strategic_value
 			best_score = score
 			best_category = cat
 	
+	# If no category found, pick first available (shouldn't happen)
 	if best_category == "":
-		get_node("/root/Logger").error("Bot cannot choose category: all used", {
-			"bot_id": bot_id,
-			"function": "_simulate_bot_roll"
-		})
-		return
+		for cat in ScoreLogic.CATEGORIES:
+			if cat not in used_categories:
+				best_category = cat
+				best_score = int(scores.get(cat, 0))
+				break
 	
-	# Score the category
+	# Decide whether to roll again or choose category
+	var should_choose: bool = false
+	
+	if rolls_left == 0:
+		# Must choose after 3 rolls
+		should_choose = true
+	elif best_score >= 25:
+		# Good score (full house or better) - take it if rolls left <= 1
+		should_choose = rolls_left <= 1
+	elif best_score >= 15 and rolls_left == 1:
+		# Decent score on last roll - take it
+		should_choose = true
+	elif best_score == 0 and rolls_left <= 1:
+		# No good options, might as well take something on last roll
+		should_choose = true
+	else:
+		# Roll again to try for better score
+		should_choose = false
+	
+	var held_indices: Array[int] = []
+	if not should_choose:
+		held_indices = _bot_decide_holds(bot_id, dice, used_categories, rolls_left)
+	
+	return {
+		"should_choose_category": should_choose,
+		"category": best_category,
+		"score": best_score,
+		"held_indices": held_indices
+	}
+
+
+func _bot_get_unique_sorted(dice: Array[int]) -> Array[int]:
+	var seen: Dictionary = {}
+	var result: Array[int] = []
+	for d in dice:
+		if not seen.has(d):
+			seen[d] = true
+			result.append(d)
+	result.sort()
+	return result
+
+
+func _bot_decide_holds(bot_id: String, dice: Array[int], used_categories: Array, rolls_left: int) -> Array[int]:
+	# Strategy: hold dice that contribute to high-value categories
+	var counts: Dictionary = ScoreLogic.count_faces(dice)
+	var held: Array[int] = []
+	
+	# Priority 1: Hold dice for Yahtzee (5 of a kind)
+	var max_count: int = 0
+	var max_face: int = 0
+	for face in counts:
+		var count: int = counts[face]
+		if count > max_count:
+			max_count = count
+			max_face = face
+	
+	if max_count >= 3:
+		# Hold all dice of this face
+		for i in range(5):
+			if dice[i] == max_face:
+				held.append(i)
+		return held
+	
+	# Priority 2: Hold for large straight
+	if ScoreLogic.is_large_straight(dice):
+		# Already have large straight, hold all
+		return [0, 1, 2, 3, 4]
+	
+	var unique: Array[int] = _bot_get_unique_sorted(dice)
+	# Check if we're close to large straight
+	var straight_candidates := [[1,2,3,4,5], [2,3,4,5,6]]
+	for candidate in straight_candidates:
+		var matches: int = 0
+		for val in candidate:
+			if val in unique:
+				matches += 1
+		if matches >= 4:
+			# Hold dice that are part of the straight
+			for i in range(5):
+				if dice[i] in candidate:
+					held.append(i)
+			return held
+	
+	# Priority 3: Hold for full house (3 of one, 2 of another)
+	if max_count >= 2:
+		# Hold the pair/triple
+		for i in range(5):
+			if dice[i] == max_face:
+				held.append(i)
+		
+		# Also hold a pair of another face if exists
+		for face in counts:
+			if face != max_face and counts[face] >= 2:
+				for i in range(5):
+					if dice[i] == face and i not in held:
+						held.append(i)
+						if held.size() >= 5:
+							break
+				break
+		
+		if held.size() >= 3:
+			return held
+	
+	# Priority 4: Hold for small straight
+	var small_straight_candidates := [[1,2,3,4], [2,3,4,5], [3,4,5,6]]
+	for candidate in small_straight_candidates:
+		var matches: int = 0
+		for val in candidate:
+			if val in unique:
+				matches += 1
+		if matches >= 3:
+			# Hold dice that are part of the straight
+			for i in range(5):
+				if dice[i] in candidate:
+					held.append(i)
+			return held
+	
+	# Priority 5: Hold high pairs (for three/four of a kind)
+	if max_count >= 2:
+		for i in range(5):
+			if dice[i] == max_face:
+				held.append(i)
+		return held
+	
+	# Priority 6: Hold high single dice (for upper section or three/four of a kind)
+	# Hold dice >= 4
+	for i in range(5):
+		if dice[i] >= 4:
+			held.append(i)
+	
+	return held
+
+
+func _bot_calculate_strategic_value(bot_id: String, category: String, score: int, used_categories: Array) -> float:
+	var strategic_value: float = float(score)
+	var scores: Dictionary = player_scores.get(bot_id, {})
+	
+	# Boost upper section categories if close to bonus
+	if category in ["ones", "twos", "threes", "fours", "fives", "sixes"]:
+		var upper_total: int = 0
+		for cat in ["ones", "twos", "threes", "fours", "fives", "sixes"]:
+			upper_total += scores.get(cat, 0)
+		
+		if upper_total + score >= 63:
+			# This would get the bonus - add bonus value
+			strategic_value += 35.0
+		elif upper_total + score >= 50:
+			# Close to bonus - add some value
+			strategic_value += 10.0
+	
+	# Boost Yahtzee significantly
+	if category == "yahtzee" and score > 0:
+		strategic_value += 20.0
+	
+	# Boost high-value lower section categories
+	if category == "large_straight" and score > 0:
+		strategic_value += 5.0
+	elif category == "full_house" and score > 0:
+		strategic_value += 3.0
+	
+	# Penalize zero scores slightly (but not too much - might be forced)
+	if score == 0:
+		strategic_value -= 1.0
+	
+	return strategic_value
+
+
+func _bot_choose_category(bot_id: String, category: String, dice: Array[int]) -> void:
+	var used: Array = player_used_categories.get(bot_id, [])
+	var scores: Dictionary = ScoreLogic.score_all(dice)
+	var score: int = int(scores.get(category, 0))
+	
+	# Yahtzee bonus check
+	var yahtzee_bonus_added := false
+	if _is_yahtzee(dice):
+		if "yahtzee" in used and player_scores.get(bot_id, {}).get("yahtzee", 0) > 0:
+			yahtzee_bonuses[bot_id] = yahtzee_bonuses.get(bot_id, 0) + 100
+			yahtzee_bonus_added = true
+	
+	# Store score
 	if not player_scores.has(bot_id):
 		player_scores[bot_id] = {}
-	player_scores[bot_id][best_category] = best_score
-	used.append(best_category)
+	player_scores[bot_id][category] = score
+	used.append(category)
 	player_used_categories[bot_id] = used
 	
 	var upper_bonus: int = _calculate_upper_bonus(bot_id)
@@ -432,17 +690,17 @@ func _simulate_bot_roll(bot_id: String) -> void:
 	get_node("/root/Logger").info("Bot chose category", {
 		"bot_id": bot_id,
 		"bot_name": players.get(bot_id, "Unknown"),
-		"category": best_category,
-		"score": best_score,
+		"category": category,
+		"score": score,
 		"upper_bonus": upper_bonus,
-		"function": "_simulate_bot_roll"
+		"function": "_bot_choose_category"
 	})
 	
 	_emit_event({
 		"type": "SCORE_UPDATE",
 		"player_id": bot_id,
-		"category": best_category,
-		"score": best_score,
+		"category": category,
+		"score": score,
 		"upper_bonus": upper_bonus,
 		"yahtzee_bonus": yahtzee_bonuses.get(bot_id, 0)
 	})

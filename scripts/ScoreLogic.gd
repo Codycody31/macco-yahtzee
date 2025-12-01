@@ -72,23 +72,37 @@ static func is_yahtzee(dice: Array[int]) -> bool:
     return 5 in counts.values()
 
 static func score_all(dice: Array[int]) -> Dictionary:
+    # Filter out invalid dice values (0 = not rolled yet)
+    # Only consider dice values 1-6 for scoring
+    var valid_dice: Array[int] = []
+    for d in dice:
+        if d >= 1 and d <= 6:
+            valid_dice.append(d)
+    
+    # If no valid dice, return all zeros
+    if valid_dice.is_empty():
+        var result: Dictionary = {}
+        for cat in CATEGORIES:
+            result[cat] = 0
+        return result
+    
     var result: Dictionary = {}
-    result["ones"] = score_upper(dice, 1)
-    result["twos"] = score_upper(dice, 2)
-    result["threes"] = score_upper(dice, 3)
-    result["fours"] = score_upper(dice, 4)
-    result["fives"] = score_upper(dice, 5)
-    result["sixes"] = score_upper(dice, 6)
+    result["ones"] = score_upper(valid_dice, 1)
+    result["twos"] = score_upper(valid_dice, 2)
+    result["threes"] = score_upper(valid_dice, 3)
+    result["fours"] = score_upper(valid_dice, 4)
+    result["fives"] = score_upper(valid_dice, 5)
+    result["sixes"] = score_upper(valid_dice, 6)
 
     var total := 0
-    for d in dice: total += d
+    for d in valid_dice: total += d
 
-    result["three_of_a_kind"] = total if is_n_of_a_kind(dice, 3) else 0
-    result["four_of_a_kind"] = total if is_n_of_a_kind(dice, 4) else 0
-    result["full_house"] = 25 if is_full_house(dice) else 0
-    result["small_straight"] = 30 if is_small_straight(dice) else 0
-    result["large_straight"] = 40 if is_large_straight(dice) else 0
-    result["yahtzee"] = 50 if is_yahtzee(dice) else 0
+    result["three_of_a_kind"] = total if is_n_of_a_kind(valid_dice, 3) else 0
+    result["four_of_a_kind"] = total if is_n_of_a_kind(valid_dice, 4) else 0
+    result["full_house"] = 25 if is_full_house(valid_dice) else 0
+    result["small_straight"] = 30 if is_small_straight(valid_dice) else 0
+    result["large_straight"] = 40 if is_large_straight(valid_dice) else 0
+    result["yahtzee"] = 50 if is_yahtzee(valid_dice) else 0
 
     return result
 

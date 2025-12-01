@@ -137,12 +137,10 @@ func _update_logs() -> void:
 		
 		var formatted_msg: String = log_entry.get("message", "")
 		var color: Color = LEVEL_COLORS.get(level, Color.WHITE)
-		var level_name: String = LEVEL_NAMES[level] if level < LEVEL_NAMES.size() else "UNKNOWN"
 		
-		# Format with color
-		var colored_msg := "[color=#%s][%s] %s[/color]" % [
+		# Format with color (formatted_msg already contains [LEVEL] [TIME] prefix)
+		var colored_msg := "[color=#%s]%s[/color]" % [
 			_color_to_hex(color),
-			level_name,
 			formatted_msg
 		]
 		
