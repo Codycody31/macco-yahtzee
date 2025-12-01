@@ -1,0 +1,106 @@
+[gd_scene load_steps=2 format=3 uid="uid://ittfoehfcmcr"]
+
+[sub_resource type="GDScript" id="GDScript_vds3i"]
+script/source = "extends PanelContainer
+
+signal send_chat_message(text: String)
+
+# UI Color Scheme (matching GameTable)
+const PANEL_BG := Color(0.96, 0.93, 0.87)  # Cream background
+const PANEL_BORDER := Color(0.25, 0.23, 0.22)  # Dark border
+const BUTTON_BG := Color(0.25, 0.23, 0.22)  # Dark button
+const BUTTON_TEXT := Color(0.96, 0.93, 0.87)  # Light button text
+const INPUT_BG := Color(1, 1, 1, 0.8)
+const TEXT_COLOR := Color(0.25, 0.23, 0.22)
+
+@onready var chat_log: RichTextLabel = %Log
+@onready var input: LineEdit = %Input
+@onready var send_button: Button = %SendButton
+
+func _ready() -> void:
+	_setup_styles()
+	
+	chat_log.bbcode_enabled = true
+	chat_log.scroll_following = true
+	
+	send_button.pressed.connect(_on_send_pressed)
+	input.text_submitted.connect(_on_text_submitted)
+
+func _setup_styles() -> void:
+	# Panel style
+	var style := StyleBoxFlat.new()
+	style.bg_color = PANEL_BG
+	style.border_color = PANEL_BORDER
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(8)
+	add_theme_stylebox_override(\"panel\", style)
+	
+	# Input style
+	var input_style := StyleBoxFlat.new()
+	input_style.bg_color = INPUT_BG
+	input_style.border_color = PANEL_BORDER
+	input_style.set_border_width_all(1)
+	input_style.set_corner_radius_all(4)
+	input_style.set_content_margin_all(8)
+	input.add_theme_stylebox_override(\"normal\", input_style)
+	input.add_theme_stylebox_override(\"focus\", input_style)
+	input.add_theme_color_override(\"font_color\", TEXT_COLOR)
+	input.custom_minimum_size.y = 40
+	
+	# Button style
+	var btn_style := StyleBoxFlat.new()
+	btn_style.bg_color = BUTTON_BG
+	btn_style.set_corner_radius_all(4)
+	btn_style.set_content_margin_all(8)
+	send_button.add_theme_stylebox_override(\"normal\", btn_style)
+	send_button.add_theme_stylebox_override(\"hover\", btn_style)
+	send_button.add_theme_stylebox_override(\"pressed\", btn_style)
+	send_button.add_theme_color_override(\"font_color\", BUTTON_TEXT)
+	send_button.custom_minimum_size.y = 40
+	
+	# Log style
+	chat_log.add_theme_color_override(\"default_color\", TEXT_COLOR)
+
+func _on_send_pressed() -> void:
+	_send()
+
+func _on_text_submitted(_new_text: String) -> void:
+	_send()
+
+func _send() -> void:
+	var text := input.text.strip_edges()
+	if text == \"\":
+		return
+	emit_signal(\"send_chat_message\", text)
+	input.text = \"\"
+
+func add_message(from_name: String, text: String) -> void:
+	chat_log.append_text(\"[b]%s:[/b] %s\\n\" % [from_name, text])
+"
+
+[node name="ChatPanel" type="PanelContainer"]
+script = SubResource("GDScript_vds3i")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Log" type="RichTextLabel" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+scroll_following = true
+
+[node name="HBox" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Input" type="LineEdit" parent="VBox/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Type message..."
+
+[node name="SendButton" type="Button" parent="VBox/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Send"

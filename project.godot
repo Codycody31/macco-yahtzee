@@ -1,0 +1,51 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Yahtzee"
+config/version="2025.12.01"
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.5", "Mobile")
+boot_splash/bg_color=Color(0.10980392, 0.14117648, 0.1882353, 1)
+boot_splash/image="uid://bt5jdtnhryjwb"
+config/icon="uid://ianhvptbd4no"
+
+[autoload]
+
+Logger="*res://autoload/Logger.gd"
+GameConfig="*res://autoload/GameConfig.gd"
+GameNetwork="*res://autoload/GameNetwork.gd"
+
+[debug]
+
+gdscript/warnings/treat_warnings_as_errors=true
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/initial_position_type=0
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=6
+
+[dotnet]
+
+project/assembly_name="Yahtzee"
+
+[gui]
+
+common/snap_controls_to_pixels=false
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

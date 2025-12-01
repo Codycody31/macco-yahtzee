@@ -1,0 +1,110 @@
+name: "Build Release"
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - "master"
+
+env:
+  GODOT_VERSION: 4.5
+  EXPORT_NAME: yahtzee
+  PROJECT_PATH: .
+
+jobs:
+  export-windows:
+    name: Windows Export
+    runs-on: docker-amd64
+    container:
+      image: barichello/godot-ci:mono-4.5
+    steps:
+      - name: Setup Act Workaround
+        run: curl -fsSL https://deb.nodesource.com/setup_22.x | bash && apt install -y nodejs
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          lfs: true
+      - name: Windows Build
+        run: |
+          mkdir -v -p build/windows
+          EXPORT_DIR="$(readlink -f build)"
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Windows - x86_64" "$EXPORT_DIR/windows/$EXPORT_NAME.exe"
+      - name: Upload Artifact
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: build/windows
+
+  export-linux:
+    name: Linux Export
+    runs-on: docker-amd64
+    container:
+      image: barichello/godot-ci:mono-4.5
+    steps:
+      - name: Setup Act Workaround
+        run: curl -fsSL https://deb.nodesource.com/setup_22.x | bash && apt install -y nodejs
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          lfs: true
+      - name: Linux Build
+        run: |
+          mkdir -v -p build/linux
+          EXPORT_DIR="$(readlink -f build)"
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Linux - x86_64" "$EXPORT_DIR/linux/$EXPORT_NAME.x86_64"
+      - name: Upload Artifact
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: build/linux
+
+  export-android:
+    name: Android Export
+    runs-on: docker-amd64
+    container:
+      image: barichello/godot-ci:mono-4.5
+    steps:
+      - name: Setup Act Workaround
+        run: curl -fsSL https://deb.nodesource.com/setup_22.x | bash && apt install -y nodejs
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          lfs: true
+      - name: Android Build (Debug)
+        run: |
+          mkdir -v -p build/android
+          EXPORT_DIR="$(readlink -f build)"
+          cd $PROJECT_PATH
+          # Use --export-debug for CI builds (uses debug keystore, no signing required)
+          godot --headless --verbose --export-debug "Android - ARM64-v8a" "$EXPORT_DIR/android/$EXPORT_NAME.apk"
+      - name: Upload Artifact
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: android-arm64-v8a
+          path: build/android
+
+  export-mac:
+    name: Mac Export
+    runs-on: docker-amd64
+    container:
+      image: barichello/godot-ci:mono-4.5
+    steps:
+      - name: Setup Act Workaround
+        run: curl -fsSL https://deb.nodesource.com/setup_22.x | bash && apt install -y nodejs
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          lfs: true
+      - name: Mac Build
+        run: |
+          mkdir -v -p build/mac
+          EXPORT_DIR="$(readlink -f build)"
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "macOS" "$EXPORT_DIR/mac/$EXPORT_NAME.zip"
+      - name: Upload Artifact
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: mac-universal
+          path: build/mac

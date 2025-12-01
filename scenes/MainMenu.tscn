@@ -1,0 +1,154 @@
+[gd_scene load_steps=2 format=3 uid="uid://pjtiivxhv3pk"]
+
+[ext_resource type="Script" uid="uid://cs58w7y86ytcf" path="res://scripts/MainMenu.gd" id="1"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.91, 0.52, 0.45, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TitleSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TitleRow" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleSection"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleSection/TitleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 4
+
+[node name="Title" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleSection/TitleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "YAHTZEE"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Online"
+horizontal_alignment = 1
+
+[node name="Separator1" type="HSeparator" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="NameSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PlayerNameLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/NameSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Your Name"
+horizontal_alignment = 1
+
+[node name="PlayerName" type="LineEdit" parent="CenterContainer/MainPanel/MarginContainer/VBox/NameSection"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Enter your name"
+alignment = 1
+
+[node name="ModeSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModeLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ModeSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Game Mode"
+horizontal_alignment = 1
+
+[node name="ModeSelect" type="OptionButton" parent="CenterContainer/MainPanel/MarginContainer/VBox/ModeSection"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="Separator2" type="HSeparator" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="ButtonsSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MainButtons" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ButtonsSection"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="HostButton" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/ButtonsSection/MainButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Host Game"
+
+[node name="JoinButton" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/ButtonsSection/MainButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Join Game"
+
+[node name="QuitButton" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/ButtonsSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
+
+[node name="JoinPopup" type="AcceptDialog" parent="."]
+unique_name_in_owner = true
+title = "Join Game"
+
+[node name="JoinVBox" type="VBoxContainer" parent="JoinPopup"]
+theme_override_constants/separation = 12
+
+[node name="RoomLabel" type="Label" parent="JoinPopup/JoinVBox"]
+layout_mode = 2
+text = "Room code or host IP:"
+
+[node name="RoomInput" type="LineEdit" parent="JoinPopup/JoinVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "e.g. ABC123 or 127.0.0.1"
+
+[node name="InfoLabel" type="Label" parent="JoinPopup/JoinVBox"]
+unique_name_in_owner = true
+layout_mode = 2

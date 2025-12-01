@@ -1,0 +1,70 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#222A36"/>
+      <stop offset="100%" stop-color="#161B23"/>
+    </linearGradient>
+    <linearGradient id="diceGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+    <linearGradient id="cardGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F7F9FC"/>
+      <stop offset="100%" stop-color="#E5E9F2"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bgGradient)"/>
+
+  <!-- Scorecard-style panel -->
+  <g transform="translate(120,120)">
+    <rect x="0" y="0" width="220" height="260" rx="24" fill="url(#cardGradient)"/>
+    <!-- Header -->
+    <rect x="0" y="0" width="220" height="48" rx="24" fill="#3B82F6"/>
+    <circle cx="28" cy="24" r="6" fill="#BFDBFE"/>
+    <rect x="46" y="16" width="120" height="16" rx="8" fill="#EFF6FF"/>
+
+    <!-- Score lines -->
+    <g fill="#CBD5F5">
+      <rect x="24" y="64" width="172" height="6" rx="3"/>
+      <rect x="24" y="96" width="140" height="6" rx="3"/>
+      <rect x="24" y="128" width="156" height="6" rx="3"/>
+      <rect x="24" y="160" width="132" height="6" rx="3"/>
+      <rect x="24" y="192" width="168" height="6" rx="3"/>
+      <rect x="24" y="224" width="120" height="6" rx="3"/>
+    </g>
+  </g>
+
+  <!-- Dice group -->
+  <g transform="translate(248,220) rotate(-18)">
+    <!-- Back dice -->
+    <g transform="translate(24,-40)">
+      <rect x="0" y="0" width="130" height="130" rx="28" fill="#111827" opacity="0.3"/>
+      <rect x="4" y="4" width="122" height="122" rx="26" fill="#1F2933" opacity="0.6"/>
+
+      <!-- Pips: 4 -->
+      <circle cx="32" cy="32" r="9" fill="#F9FAFB"/>
+      <circle cx="92" cy="32" r="9" fill="#F9FAFB"/>
+      <circle cx="32" cy="92" r="9" fill="#F9FAFB"/>
+      <circle cx="92" cy="92" r="9" fill="#F9FAFB"/>
+    </g>
+
+    <!-- Front dice -->
+    <g transform="translate(-10,10)">
+      <rect x="0" y="0" width="140" height="140" rx="32" fill="#0B1120" opacity="0.30"/>
+      <rect x="6" y="6" width="128" height="128" rx="30" fill="url(#diceGradient)"/>
+
+      <!-- Pips: 5 -->
+      <circle cx="34" cy="34" r="9" fill="#111827"/>
+      <circle cx="100" cy="34" r="9" fill="#111827"/>
+      <circle cx="67" cy="67" r="9" fill="#111827"/>
+      <circle cx="34" cy="100" r="9" fill="#111827"/>
+      <circle cx="100" cy="100" r="9" fill="#111827"/>
+
+      <!-- Highlight -->
+      <path d="M18 36 Q70 8 122 36" fill="none" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
+
