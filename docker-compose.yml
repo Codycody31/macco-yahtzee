@@ -1,8 +1,9 @@
 services:
-  yahtzee-server:
+  yahtzee:
     build:
       context: ./server
       dockerfile: Dockerfile
+    image: git.macco.dev/macco/yahtzee:latest
     ports:
       - "8080:8080"
     environment:
