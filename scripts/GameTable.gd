@@ -137,6 +137,8 @@ func _set_landscape_layout() -> void:
 	right_panel.visible = true
 	bottom_area.visible = false
 	scorecard_container.custom_minimum_size.y = 0 # Let it shrink if needed
+	# Update width based on player count
+	_update_scorecard_container_size()
 
 func _set_portrait_layout() -> void:
 	# Move dice and buttons back to BottomArea if not already there
@@ -147,6 +149,8 @@ func _set_portrait_layout() -> void:
 	right_panel.visible = false
 	bottom_area.visible = true
 	scorecard_container.custom_minimum_size.y = 400 # Ensure some height in portrait
+	# Update width based on player count
+	_update_scorecard_container_size()
 
 func _setup_ui_styles() -> void:
 	# Style the turn indicator panel
@@ -239,7 +243,8 @@ func _create_scorecard() -> void:
 	scorecard_container.add_child(scorecard_panel)
 	scorecard_panel.category_chosen.connect(_on_category_chosen)
 	
-	# Set up container to expand - wider for desktop
+	# Set up container to expand - adaptive sizing based on player count
+	# Will be updated when players are set
 	scorecard_container.custom_minimum_size = Vector2(320, 300)
 	scorecard_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
@@ -466,6 +471,7 @@ func _handle_game_state(event: Dictionary) -> void:
 	# Setup scorecard with player info (this rebuilds the UI using scores_by_player_id)
 	scorecard_panel.set_players_ordered(players, player_order, local_player_id)
 	scorecard_panel.set_current_turn_by_id(current_player_id, player_order)
+	_update_scorecard_container_size()
 	
 	_refresh_player_list()
 	_update_current_player_label()
@@ -921,6 +927,7 @@ func _complete_game_start() -> void:
 	# Setup scorecard with player info using consistent order
 	scorecard_panel.set_players_ordered(players, player_order, local_player_id)
 	scorecard_panel.set_current_turn_by_id(current_player_id, player_order)
+	_update_scorecard_container_size()
 	
 	_refresh_player_list()
 	_update_current_player_label()
@@ -1197,6 +1204,31 @@ func _update_room_code_label() -> void:
 			room_code_label.text = "Room: " + room_code
 		else:
 			room_code_label.text = ""
+
+func _update_scorecard_container_size() -> void:
+	# Adjust scorecard container width based on player count
+	var player_count: int = player_order.size()
+	var base_width: float = 320.0
+	var min_width: float = base_width
+	
+	# Calculate minimum width needed: icon column (48) + player columns
+	if player_count >= 5:
+		# 5+ players: 65px per column
+		min_width = 48.0 + (player_count * 65.0)
+	elif player_count >= 4:
+		# 4 players: 70px per column
+		min_width = 48.0 + (player_count * 70.0)
+	else:
+		# 2-3 players: 75px per column
+		min_width = 48.0 + (player_count * 75.0)
+	
+	# Add some padding - tighter
+	min_width += 16.0  # Reduced from 20
+	
+	# Set minimum width (maximum width is handled by size flags)
+	scorecard_container.custom_minimum_size.x = min_width
+	# Note: custom_maximum_size not supported on all Control types,
+	# so we rely on size flags and container constraints instead
 
 func _is_local_turn() -> bool:
 	return current_player_id == local_player_id and not GameConfig.is_viewer

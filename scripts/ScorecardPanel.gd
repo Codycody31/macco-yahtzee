@@ -12,12 +12,14 @@ const HEADER_BG_COLOR := Color(0.35, 0.32, 0.30)  # Dark header
 const HEADER_TEXT_COLOR := Color(0.96, 0.93, 0.87)  # Light text
 const ACTIVE_TURN_COLOR := Color(1.0, 0.95, 0.7)  # Soft yellow highlight for active turn
 
-# Player colors (matching ScoreCell)
+# Player colors (matching ScoreCell) - supports up to 6 players
 const PLAYER_COLORS := [
 	Color(0.91, 0.45, 0.42),  # Coral/salmon red
 	Color(0.55, 0.78, 0.73),  # Teal/mint green
 	Color(0.65, 0.55, 0.85),  # Purple
 	Color(0.95, 0.75, 0.45),  # Orange/gold
+	Color(0.75, 0.85, 0.55),  # Light green
+	Color(0.85, 0.65, 0.75),  # Pink
 ]
 
 # Categories in display order
@@ -59,13 +61,13 @@ func _ready() -> void:
 	_build_ui()
 
 func _setup_panel_style() -> void:
-	# Create a styled panel
+	# Create a styled panel - cleaner, tighter design
 	var style := StyleBoxFlat.new()
 	style.bg_color = PANEL_BG_COLOR
 	style.border_color = PANEL_BORDER_COLOR
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(12)
-	style.set_content_margin_all(8)
+	style.set_border_width_all(2)  # Thinner border
+	style.set_corner_radius_all(8)  # Less rounded
+	style.set_content_margin_all(6)  # Tighter padding
 	add_theme_stylebox_override("panel", style)
 
 func _build_ui() -> void:
@@ -74,14 +76,23 @@ func _build_ui() -> void:
 		remove_child(child)
 		child.queue_free()
 	
-	# Main scroll container
+	# Main scroll container - enable horizontal scroll for many players
 	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Enable horizontal scrolling when there are 4+ players
+	if player_count >= 4:
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	else:
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(scroll)
 	
 	main_container = VBoxContainer.new()
-	main_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# For many players, use shrink center to allow horizontal scrolling
+	# For few players, expand to fill available space
+	if player_count >= 4:
+		main_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		main_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_container.add_theme_constant_override("separation", 0)
 	scroll.add_child(main_container)
 	
@@ -92,7 +103,11 @@ func _build_ui() -> void:
 func _build_header() -> void:
 	# Header row with player names
 	header_container = HBoxContainer.new()
-	header_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# For many players, don't expand to fill (allows horizontal scroll)
+	if player_count >= 4:
+		header_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		header_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_container.add_theme_constant_override("separation", 0)
 	main_container.add_child(header_container)
 	
@@ -100,14 +115,26 @@ func _build_header() -> void:
 	
 	# Empty space for category icon column
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(56, 36)
+	spacer.custom_minimum_size = Vector2(48, 32)  # Tighter sizing
 	header_container.add_child(spacer)
 	
-	# Player name headers
+	# Player name headers - adaptive sizing based on player count
+	var min_header_width: float = 75.0  # Slightly tighter
+	var header_height: float = 32.0  # Reduced from 36
+	# For many players, use smaller minimum width
+	if player_count >= 5:
+		min_header_width = 65.0
+	elif player_count >= 4:
+		min_header_width = 70.0
+	
 	for i in range(player_count):
 		var header := PanelContainer.new()
-		header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		header.custom_minimum_size = Vector2(80, 36)
+		# Use shrink center for many players to allow scrolling
+		if player_count >= 4:
+			header.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		else:
+			header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		header.custom_minimum_size = Vector2(min_header_width, header_height)
 		
 		var label := Label.new()
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -116,7 +143,15 @@ func _build_header() -> void:
 			label.text = player_names[i]
 		else:
 			label.text = "P%d" % (i + 1)
-		label.add_theme_font_size_override("font_size", 14)
+		# Smaller font for many players - cleaner sizing
+		var font_size: int = 13  # Slightly smaller default
+		if player_count >= 5:
+			font_size = 11
+		elif player_count >= 4:
+			font_size = 12
+		label.add_theme_font_size_override("font_size", font_size)
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		label.clip_contents = true
 		
 		header.add_child(label)
 		header_container.add_child(header)
@@ -132,17 +167,17 @@ func _update_header_styles() -> void:
 		# Base color is player's color
 		var base_color: Color = PLAYER_COLORS[i % PLAYER_COLORS.size()]
 		
-		# Highlight current player's turn
+		# Highlight current player's turn - cleaner borders
 		if i == current_turn_player:
 			style.bg_color = ACTIVE_TURN_COLOR
 			style.border_color = base_color
-			style.set_border_width_all(3)
+			style.set_border_width_all(2)  # Thinner border
 		else:
 			style.bg_color = base_color.darkened(0.1)
 			style.border_color = PANEL_BORDER_COLOR
 			style.set_border_width_all(1)
 		
-		style.set_corner_radius_all(4)
+		style.set_corner_radius_all(3)  # Less rounded
 		header.add_theme_stylebox_override("panel", style)
 		
 		# Update label color
@@ -161,7 +196,11 @@ func _build_grid() -> void:
 	# Grid: 1 column for icons + player_count columns for scores
 	grid = GridContainer.new()
 	grid.columns = 1 + player_count
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# For many players, don't expand to fill (allows horizontal scroll)
+	if player_count >= 4:
+		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 0)
 	grid.add_theme_constant_override("v_separation", 0)
 	main_container.add_child(grid)
@@ -182,24 +221,35 @@ func _build_grid() -> void:
 		_add_category_row(cat)
 
 func _add_category_row(cat: String) -> void:
-	# Category icon column
+	# Category icon column - tighter sizing
 	var icon := Control.new()
 	icon.set_script(CategoryIconScript)
 	icon.set_category(cat)
-	icon.custom_minimum_size = Vector2(56, 44)
+	icon.custom_minimum_size = Vector2(48, 40)  # Reduced from 56x44
 	icon.icon_pressed.connect(_on_icon_pressed)
 	grid.add_child(icon)
 	category_icons[cat] = icon
 	
-	# Score cells for each player
+	# Score cells for each player - adaptive sizing, tighter
+	var min_cell_width: float = 75.0  # Reduced from 80
+	var cell_height: float = 40.0  # Reduced from 44
+	if player_count >= 5:
+		min_cell_width = 65.0
+	elif player_count >= 4:
+		min_cell_width = 70.0
+	
 	score_cells[cat] = []
 	for p_idx in range(player_count):
 		var cell := Control.new()
 		cell.set_script(ScoreCellScript)
 		cell.category = cat
 		cell.player_index = p_idx
-		cell.custom_minimum_size = Vector2(80, 44)
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.custom_minimum_size = Vector2(min_cell_width, cell_height)
+		# Use shrink center for many players to allow scrolling
+		if player_count >= 4:
+			cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		else:
+			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cell.cell_pressed.connect(_on_cell_pressed)
 		grid.add_child(cell)
 		score_cells[cat].append(cell)
@@ -218,13 +268,17 @@ func _build_totals() -> void:
 	
 	# Totals row container
 	totals_container = HBoxContainer.new()
-	totals_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# For many players, don't expand to fill (allows horizontal scroll)
+	if player_count >= 4:
+		totals_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		totals_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	totals_container.add_theme_constant_override("separation", 0)
 	main_container.add_child(totals_container)
 	
 	# "Total" label in icon column
 	var total_icon := PanelContainer.new()
-	total_icon.custom_minimum_size = Vector2(56, 48)
+	total_icon.custom_minimum_size = Vector2(48, 40)  # Reduced from 56x48
 	var total_icon_style := StyleBoxFlat.new()
 	total_icon_style.bg_color = HEADER_BG_COLOR
 	total_icon_style.set_corner_radius_all(0)
@@ -233,16 +287,27 @@ func _build_totals() -> void:
 	total_text.text = "Σ"
 	total_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	total_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	total_text.add_theme_font_size_override("font_size", 20)
+	total_text.add_theme_font_size_override("font_size", 18)  # Reduced from 20
 	total_text.add_theme_color_override("font_color", HEADER_TEXT_COLOR)
 	total_icon.add_child(total_text)
 	totals_container.add_child(total_icon)
 	
-	# Total score for each player
+	# Total score for each player - adaptive sizing, tighter
+	var min_total_width: float = 75.0  # Reduced from 80
+	var total_height: float = 40.0  # Reduced from 48
+	if player_count >= 5:
+		min_total_width = 65.0
+	elif player_count >= 4:
+		min_total_width = 70.0
+	
 	for i in range(player_count):
 		var total_panel := PanelContainer.new()
-		total_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		total_panel.custom_minimum_size = Vector2(80, 48)
+		# Use shrink center for many players to allow scrolling
+		if player_count >= 4:
+			total_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		else:
+			total_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		total_panel.custom_minimum_size = Vector2(min_total_width, total_height)
 		
 		var style := StyleBoxFlat.new()
 		style.bg_color = PLAYER_COLORS[i % PLAYER_COLORS.size()].lightened(0.2)
@@ -254,7 +319,7 @@ func _build_totals() -> void:
 		score_label.text = "0"
 		score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		score_label.add_theme_font_size_override("font_size", 18)
+		score_label.add_theme_font_size_override("font_size", 16)  # Reduced from 18
 		score_label.add_theme_color_override("font_color", Color(0.15, 0.12, 0.10))
 		total_panel.add_child(score_label)
 		
@@ -274,7 +339,7 @@ func _update_totals() -> void:
 			label.text = str(total)
 
 func set_player_count(count: int) -> void:
-	player_count = clampi(count, 1, 4)
+	player_count = clampi(count, 1, 6)  # Support up to 6 players
 	if main_container:
 		# Rebuild the UI with new player count
 		for child in main_container.get_children():

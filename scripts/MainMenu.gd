@@ -18,6 +18,9 @@ const LABEL_COLOR := Color(0.4, 0.38, 0.35)  # Muted label
 @onready var player_name_edit: LineEdit = %PlayerName
 @onready var mode_label: Label = %ModeLabel
 @onready var mode_select: OptionButton = %ModeSelect
+@onready var bot_count_section: VBoxContainer = %BotCountSection
+@onready var bot_count_label: Label = %BotCountLabel
+@onready var bot_count_select: OptionButton = %BotCountSelect
 @onready var host_button: Button = %HostButton
 @onready var join_button: Button = %JoinButton
 @onready var quit_button: Button = %QuitButton
@@ -46,6 +49,9 @@ func _ready() -> void:
 	quit_button.pressed.connect(_on_quit_pressed)
 	join_popup.confirmed.connect(_on_join_popup_confirmed)
 	mode_select.item_selected.connect(_on_mode_changed)
+	
+	# Setup bot count selector
+	_setup_bot_count_selector()
 
 	# Create start match button (hidden by default)
 	start_match_button = Button.new()
@@ -118,6 +124,8 @@ func _setup_styles() -> void:
 	player_name_label.add_theme_color_override("font_color", LABEL_COLOR)
 	mode_label.add_theme_font_size_override("font_size", 14)
 	mode_label.add_theme_color_override("font_color", LABEL_COLOR)
+	bot_count_label.add_theme_font_size_override("font_size", 14)
+	bot_count_label.add_theme_color_override("font_color", LABEL_COLOR)
 	
 	# Style input field
 	var input_style := StyleBoxFlat.new()
@@ -190,8 +198,14 @@ func _on_host_pressed() -> void:
 	if GameConfig.network_mode == GameConfig.NetworkMode.MOCK:
 		# Practice mode: skip lobby, go straight to game
 		GameConfig.is_host = true
-		GameConfig.max_players = 2  # 1 player + 1 bot
-		get_node("/root/Logger").debug("Practice mode - going directly to game", {"function": "_on_host_pressed"})
+		# Get selected bot count (1-5 bots) + 1 player = 2-6 total players
+		var bot_count: int = bot_count_select.selected + 1  # 0-4 index -> 1-5 bots
+		GameConfig.max_players = bot_count + 1  # bots + player
+		get_node("/root/Logger").debug("Practice mode - going directly to game", {
+			"bot_count": bot_count,
+			"max_players": GameConfig.max_players,
+			"function": "_on_host_pressed"
+		})
 		get_tree().change_scene_to_file("res://scenes/GameTable.tscn")
 		return
 
@@ -229,6 +243,22 @@ func _on_quit_pressed() -> void:
 	get_tree().quit()
 
 
+func _setup_bot_count_selector() -> void:
+	# Populate bot count options (1-5 bots)
+	bot_count_select.clear()
+	for i in range(1, 6):  # 1 to 5 bots
+		var bot_text := "%d Bot" % i
+		if i > 1:
+			bot_text += "s"
+		bot_count_select.add_item(bot_text)
+	
+	# Default to 1 bot
+	bot_count_select.selected = 0
+	
+	# Style the bot count selector to match mode select
+	bot_count_select.add_theme_font_size_override("font_size", 16)
+	bot_count_select.add_theme_color_override("font_color", TITLE_COLOR)
+
 func _on_mode_changed(index: int) -> void:
 	# 0 = Online Server, 1 = Practice
 	var is_practice := index == 1
@@ -242,15 +272,20 @@ func _on_mode_changed(index: int) -> void:
 	host_button.visible = not is_practice
 	join_button.visible = not is_practice
 	start_match_button.visible = is_practice
+	bot_count_section.visible = is_practice
 
 
 func _on_start_match_pressed() -> void:
 	_apply_config_from_ui()
 	GameConfig.is_host = true
-	GameConfig.max_players = 2  # 1 player + 1 bot
+	
+	# Get selected bot count (1-5 bots) + 1 player = 2-6 total players
+	var bot_count: int = bot_count_select.selected + 1  # 0-4 index -> 1-5 bots
+	GameConfig.max_players = bot_count + 1  # bots + player
 	
 	get_node("/root/Logger").info("Start match button pressed (practice mode)", {
 		"player_name": GameConfig.player_name,
+		"bot_count": bot_count,
 		"max_players": GameConfig.max_players,
 		"function": "_on_start_match_pressed"
 	})

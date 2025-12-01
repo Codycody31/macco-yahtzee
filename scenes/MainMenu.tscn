@@ -106,6 +106,23 @@ unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
 
+[node name="BotCountSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ModeSection"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+theme_override_constants/separation = 8
+
+[node name="BotCountLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ModeSection/BotCountSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Number of Bots"
+horizontal_alignment = 1
+
+[node name="BotCountSelect" type="OptionButton" parent="CenterContainer/MainPanel/MarginContainer/VBox/ModeSection/BotCountSection"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
 [node name="Separator2" type="HSeparator" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
 layout_mode = 2
 
