@@ -49,6 +49,7 @@ func _ready() -> void:
 	quit_button.pressed.connect(_on_quit_pressed)
 	join_popup.confirmed.connect(_on_join_popup_confirmed)
 	mode_select.item_selected.connect(_on_mode_changed)
+	room_input.text_changed.connect(_on_room_input_changed)
 	
 	# Setup bot count selector
 	_setup_bot_count_selector()
@@ -227,8 +228,15 @@ func _on_join_pressed() -> void:
 	room_input.text = ""
 	join_popup.popup_centered()
 
+func _on_room_input_changed(new_text: String) -> void:
+	# Convert input to uppercase as user types
+	var cursor_pos := room_input.caret_column
+	room_input.text = new_text.to_upper()
+	# Restore cursor position after converting to uppercase
+	room_input.caret_column = cursor_pos
+
 func _on_join_popup_confirmed() -> void:
-	var code := room_input.text.strip_edges()
+	var code := room_input.text.strip_edges().to_upper()
 	GameConfig.room_code = code
 	
 	get_node("/root/Logger").info("Joining room", {

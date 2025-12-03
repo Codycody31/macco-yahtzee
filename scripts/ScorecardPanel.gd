@@ -33,6 +33,7 @@ var current_turn_player: int = 0  # Which player's turn it is
 var player_names: Array[String] = []
 
 # UI references
+var scroll_container: ScrollContainer  # Reference to the scroll container
 var main_container: VBoxContainer
 var header_container: HBoxContainer
 var grid: GridContainer
@@ -77,14 +78,14 @@ func _build_ui() -> void:
 		child.queue_free()
 	
 	# Main scroll container - enable horizontal scroll for many players
-	var scroll := ScrollContainer.new()
+	scroll_container = ScrollContainer.new()
 	# Enable horizontal scrolling when there are 4+ players
 	if player_count >= 4:
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	else:
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(scroll)
+		scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(scroll_container)
 	
 	main_container = VBoxContainer.new()
 	# For many players, use shrink center to allow horizontal scrolling
@@ -94,7 +95,7 @@ func _build_ui() -> void:
 	else:
 		main_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_container.add_theme_constant_override("separation", 0)
-	scroll.add_child(main_container)
+	scroll_container.add_child(main_container)
 	
 	_build_header()
 	_build_grid()
@@ -572,6 +573,7 @@ func _show_category_info(category_name: String) -> void:
 	
 	# Find the row for this category by using the icon and cells
 	var row_rect: Rect2 = Rect2()
+	var visible_row_rect: Rect2 = Rect2()  # Row rect clipped to visible scroll area
 	if category_name in category_icons and category_name in score_cells:
 		var icon: Control = category_icons[category_name]
 		var cells: Array = score_cells[category_name]
@@ -583,39 +585,67 @@ func _show_category_info(category_name: String) -> void:
 			if cell_control:
 				var cell_rect := cell_control.get_global_rect()
 				row_rect = row_rect.merge(cell_rect)
+		
+		# Get the visible scroll area and clip row_rect to it
+		if scroll_container:
+			var scroll_global_rect := scroll_container.get_global_rect()
+			# Clip row_rect to the visible scroll area
+			visible_row_rect = row_rect.intersection(scroll_global_rect)
+			# If row is not visible in scroll area, use scroll area center instead
+			if visible_row_rect.size.x <= 0 or visible_row_rect.size.y <= 0:
+				visible_row_rect = scroll_global_rect
+		else:
+			visible_row_rect = row_rect
 	
-	# Create highlight for the row (cut-out effect)
-	if row_rect.size.x > 0:
+	# Create highlight for the row (cut-out effect) - use visible portion only
+	if visible_row_rect.size.x > 0 and visible_row_rect.size.y > 0:
 		var highlight := ColorRect.new()
-		highlight.position = row_rect.position
-		highlight.size = row_rect.size
+		highlight.position = visible_row_rect.position
+		highlight.size = visible_row_rect.size
 		highlight.color = Color(0.3, 0.25, 0.2, 1.0)  # Match row background
 		info_overlay.add_child(highlight)
 		
 		# Add border around highlight
 		var border := ReferenceRect.new()
-		border.position = row_rect.position - Vector2(2, 2)
-		border.size = row_rect.size + Vector2(4, 4)
+		border.position = visible_row_rect.position - Vector2(2, 2)
+		border.size = visible_row_rect.size + Vector2(4, 4)
 		border.border_color = Color(1.0, 0.84, 0.0)  # Gold border
 		border.border_width = 3.0
 		border.editor_only = false
 		info_overlay.add_child(border)
 	
-	# Create info panel on the right side
+	# Create info panel
 	var info_panel := PanelContainer.new()
-	var panel_width := 280.0
-	var panel_height := 120.0
 	var screen_size := get_viewport().get_visible_rect().size
 	
-	# Position info panel - center it vertically, on the right side
+	# Adjust panel size based on screen width to prevent overflow
+	var panel_width := 280.0
+	var panel_height := 120.0
+	var margin := 20.0
+	
+	# Ensure panel fits on screen with margins
+	if panel_width > screen_size.x - (margin * 2):
+		panel_width = screen_size.x - (margin * 2)
+	
+	# Position info panel - center it horizontally, but ensure it stays within bounds
 	var panel_x := (screen_size.x - panel_width) / 2
+	# Ensure panel doesn't go off the left or right edge
+	panel_x = max(margin, min(panel_x, screen_size.x - panel_width - margin))
+	
 	var panel_y := (screen_size.y - panel_height) / 2
 	
-	# If row is visible, position panel below/above it
-	if row_rect.size.x > 0:
-		panel_y = row_rect.position.y + row_rect.size.y + 20
-		if panel_y + panel_height > screen_size.y - 20:
-			panel_y = row_rect.position.y - panel_height - 20
+	# If row is visible in scroll area, position panel relative to visible portion
+	if visible_row_rect.size.x > 0 and visible_row_rect.size.y > 0:
+		panel_y = visible_row_rect.position.y + visible_row_rect.size.y + 20
+		# If panel would go off bottom, try above the visible row
+		if panel_y + panel_height > screen_size.y - margin:
+			panel_y = visible_row_rect.position.y - panel_height - 20
+			# If still off top, center vertically
+			if panel_y < margin:
+				panel_y = (screen_size.y - panel_height) / 2
+	
+	# Ensure panel stays within vertical bounds
+	panel_y = max(margin, min(panel_y, screen_size.y - panel_height - margin))
 	
 	info_panel.position = Vector2(panel_x, panel_y)
 	info_panel.custom_minimum_size = Vector2(panel_width, panel_height)

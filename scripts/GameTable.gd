@@ -169,11 +169,12 @@ func _set_landscape_layout() -> void:
 		if right_spacer:
 			right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	else:
-		# For larger player counts, spacers can shrink if needed
+		# For larger player counts, spacers can shrink if needed to accommodate wider scorecard
+		# This allows the scorecard to take more space while still being centered
 		if left_spacer:
-			left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			left_spacer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		if right_spacer:
-			right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			right_spacer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	
 	# Update width based on player count
 	_update_scorecard_container_size()
