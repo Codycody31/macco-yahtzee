@@ -28,6 +28,8 @@ const INDICATOR_BG := Color(0.25, 0.23, 0.22)  # Dark indicator background
 @onready var bottom_area: VBoxContainer = $MainVBox/BottomArea
 @onready var buttons_row: HBoxContainer = %RollButton.get_parent()
 @onready var debug_panel: Control = $DebugPanel
+@onready var left_spacer: Control = $MainVBox/CenterArea/LeftSpacer
+@onready var right_spacer: Control = $MainVBox/CenterArea/RightSpacer
 
 var dice_slots: Array = []
 var dice_values: Array[int] = [0,0,0,0,0]  # 0 = placeholder star, not rolled yet
@@ -117,6 +119,10 @@ func _ready() -> void:
 			debug_panel.set_process_input(false)
 
 func _on_viewport_resized() -> void:
+	# Safety check: ensure scorecard_container is initialized
+	if not is_node_ready() or not scorecard_container:
+		return
+	
 	var viewport_size = get_viewport_rect().size
 	var is_landscape = viewport_size.x > viewport_size.y * 1.2
 	
@@ -137,6 +143,38 @@ func _set_landscape_layout() -> void:
 	right_panel.visible = true
 	bottom_area.visible = false
 	scorecard_container.custom_minimum_size.y = 0 # Let it shrink if needed
+	
+	# Show spacers in landscape mode - they help center the scorecard
+	if left_spacer:
+		left_spacer.visible = true
+	if right_spacer:
+		right_spacer.visible = true
+	
+	# Adjust spacer behavior based on player count
+	# Safety check: ensure player_order is initialized
+	if player_order.is_empty():
+		# Default behavior if no players yet
+		if left_spacer:
+			left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if right_spacer:
+			right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_update_scorecard_container_size()
+		return
+	
+	var player_count: int = player_order.size()
+	if player_count <= 3:
+		# For small player counts, spacers should expand equally to center the scorecard
+		if left_spacer:
+			left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if right_spacer:
+			right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	else:
+		# For larger player counts, spacers can shrink if needed
+		if left_spacer:
+			left_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if right_spacer:
+			right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
 	# Update width based on player count
 	_update_scorecard_container_size()
 
@@ -148,7 +186,34 @@ func _set_portrait_layout() -> void:
 	
 	right_panel.visible = false
 	bottom_area.visible = true
-	scorecard_container.custom_minimum_size.y = 400 # Ensure some height in portrait
+	
+	# In portrait mode, hide both spacers to maximize scorecard width
+	# This ensures we use as much space as possible on mobile devices
+	if right_spacer:
+		right_spacer.visible = false
+	if left_spacer:
+		left_spacer.visible = false
+	
+	# In portrait mode, ensure scorecard gets adequate height
+	var viewport_size = get_viewport_rect().size
+	
+	# Safety check: ensure player_order is initialized
+	if player_order.is_empty():
+		# Default height if no players yet
+		scorecard_container.custom_minimum_size.y = 400
+		_update_scorecard_container_size()
+		return
+	
+	var player_count: int = player_order.size()
+	
+	# For small player counts, ensure scorecard takes reasonable height
+	if player_count <= 3:
+		# Use a percentage of viewport height for better mobile support
+		var min_height = min(400.0, viewport_size.y * 0.5)
+		scorecard_container.custom_minimum_size.y = max(300.0, min_height)
+	else:
+		scorecard_container.custom_minimum_size.y = 400 # Ensure some height in portrait
+	
 	# Update width based on player count
 	_update_scorecard_container_size()
 
@@ -246,6 +311,7 @@ func _create_scorecard() -> void:
 	# Set up container to expand - adaptive sizing based on player count
 	# Will be updated when players are set
 	scorecard_container.custom_minimum_size = Vector2(320, 300)
+	# Start with shrink center, but will be adjusted based on player count in _update_scorecard_container_size
 	scorecard_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 func _create_start_game_button() -> void:
@@ -542,6 +608,7 @@ func _show_viewer_overlay() -> void:
 	overlay.color = Color(0, 0, 0, 0.3)
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 50  # Above game elements but below popups (which use 100)
 	add_child(overlay)
 	
 	# Add viewer label at top
@@ -712,6 +779,7 @@ func _show_player_order_animation(anim_players: Array[Dictionary]) -> void:
 	overlay.name = "PlayerOrderOverlay"
 	overlay.color = Color(0.1, 0.12, 0.15, 0.95)
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.z_index = 100  # Ensure overlay appears above all game elements
 	add_child(overlay)
 	
 	# Center container
@@ -1024,6 +1092,7 @@ func _show_yahtzee_celebration() -> void:
 	overlay.name = "YahtzeeCelebration"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 100  # Ensure overlay appears above all game elements
 	add_child(overlay)
 	
 	# Show "YAHTZEE!" text
@@ -1207,6 +1276,12 @@ func _update_room_code_label() -> void:
 
 func _update_scorecard_container_size() -> void:
 	# Adjust scorecard container width based on player count
+	# Safety check: ensure player_order is initialized
+	if player_order.is_empty():
+		# Use default size if no players yet
+		scorecard_container.custom_minimum_size.x = 320.0
+		return
+	
 	var player_count: int = player_order.size()
 	var base_width: float = 320.0
 	var min_width: float = base_width
@@ -1225,8 +1300,46 @@ func _update_scorecard_container_size() -> void:
 	# Add some padding - tighter
 	min_width += 16.0  # Reduced from 20
 	
+	# Ensure minimum width floor for small player counts to prevent obscuring
+	# For 3 or fewer players, ensure scorecard is wide enough to be clearly visible
+	var viewport_size = get_viewport_rect().size
+	var is_landscape = viewport_size.x > viewport_size.y * 1.2
+	
+	if player_count <= 3:
+		# Set a reasonable minimum that ensures visibility
+		if is_landscape:
+			# In landscape, ensure scorecard takes at least 40% of screen width
+			var min_viewport_width = viewport_size.x * 0.4
+			min_width = max(min_width, min_viewport_width)
+		else:
+			# In portrait, ensure scorecard takes at least 90% of screen width (less margins)
+			var min_viewport_width = viewport_size.x * 0.9
+			min_width = max(min_width, min_viewport_width)
+	
+	# In portrait mode with many players, constrain width to viewport to prevent overflow
+	if not is_landscape and player_count >= 4:
+		# Limit maximum width to viewport width (with small margins)
+		var max_viewport_width = viewport_size.x - 32.0  # Account for MainVBox margins
+		min_width = min(min_width, max_viewport_width)
+	
 	# Set minimum width (maximum width is handled by size flags)
 	scorecard_container.custom_minimum_size.x = min_width
+	
+	# For small player counts (3 or fewer), allow the scorecard to expand horizontally
+	# This ensures it fills available space and doesn't get obscured
+	if player_count <= 3:
+		if is_landscape:
+			# In landscape, allow expansion but keep it centered
+			# Use SIZE_EXPAND_FILL so it can grow but still respects container constraints
+			scorecard_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		else:
+			# In portrait, expand to fill most of the width
+			scorecard_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	else:
+		# For larger player counts (4+), use shrink center to allow horizontal scrolling
+		# This prevents overflow and enables the ScrollContainer inside ScorecardPanel
+		scorecard_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
 	# Note: custom_maximum_size not supported on all Control types,
 	# so we rely on size flags and container constraints instead
 
@@ -1347,6 +1460,7 @@ func _show_error_overlay(title: String, message: String) -> void:
 	overlay.name = "ErrorOverlay"
 	overlay.color = Color(0, 0, 0, 0.85)
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.z_index = 100  # Ensure overlay appears above all game elements
 	add_child(overlay)
 	
 	# Center container
@@ -1431,6 +1545,7 @@ func _show_game_end_overlay(final_scores: Dictionary, winner_name: String, is_dr
 	var overlay := ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0.85)
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.z_index = 100  # Ensure overlay appears above all game elements
 	add_child(overlay)
 	
 	# Center container for proper alignment

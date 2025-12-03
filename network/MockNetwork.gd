@@ -330,6 +330,13 @@ func _advance_turn() -> void:
 		_emit_game_end()
 		return
 	
+	# Safety check: ensure turn_order has elements
+	if turn_order.is_empty():
+		get_node("/root/Logger").warn("Cannot advance turn: turn_order is empty", {
+			"function": "_advance_turn"
+		})
+		return
+	
 	# Move to next player
 	current_player_index = (current_player_index + 1) % turn_order.size()
 	var next_player: String = turn_order[current_player_index]
@@ -361,6 +368,24 @@ func _advance_turn() -> void:
 
 
 func _on_opponent_turn_timer() -> void:
+	# Safety check: ensure turn_order has elements and current_player_index is valid
+	if turn_order.is_empty():
+		get_node("/root/Logger").warn("Cannot process bot turn: turn_order is empty", {
+			"function": "_on_opponent_turn_timer"
+		})
+		return
+	
+	if current_player_index < 0 or current_player_index >= turn_order.size():
+		get_node("/root/Logger").warn("Invalid current_player_index", {
+			"current_player_index": current_player_index,
+			"turn_order_size": turn_order.size(),
+			"function": "_on_opponent_turn_timer"
+		})
+		# Reset to valid index
+		current_player_index = 0
+		if turn_order.is_empty():
+			return
+	
 	var current_player: String = turn_order[current_player_index]
 	if current_player == local_player_id:
 		return
