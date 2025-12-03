@@ -230,10 +230,17 @@ func _on_join_pressed() -> void:
 
 func _on_room_input_changed(new_text: String) -> void:
 	# Convert input to uppercase as user types
+	# Temporarily disconnect signal to prevent recursion when modifying text
+	room_input.text_changed.disconnect(_on_room_input_changed)
+	
 	var cursor_pos := room_input.caret_column
-	room_input.text = new_text.to_upper()
+	var upper_text := new_text.to_upper()
+	room_input.text = upper_text
 	# Restore cursor position after converting to uppercase
 	room_input.caret_column = cursor_pos
+	
+	# Reconnect signal
+	room_input.text_changed.connect(_on_room_input_changed)
 
 func _on_join_popup_confirmed() -> void:
 	var code := room_input.text.strip_edges().to_upper()

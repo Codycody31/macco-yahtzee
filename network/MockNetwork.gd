@@ -390,8 +390,8 @@ func _on_opponent_turn_timer() -> void:
 	if current_player == local_player_id:
 		return
 	
-	# Simulate bot rolling
-	_simulate_bot_roll(current_player)
+	# Simulate bot rolling - await to ensure turn completes before advancing
+	await _simulate_bot_roll(current_player)
 
 
 func _simulate_bot_roll(bot_id: String) -> void:
@@ -438,8 +438,8 @@ func _bot_turn_loop(bot_id: String) -> void:
 		var decision: Dictionary = _bot_decide_action(bot_id, current_dice, rolls_remaining, used)
 		
 		if decision.should_choose_category:
-			# Choose category and end turn
-			_bot_choose_category(bot_id, decision.category, current_dice)
+			# Choose category and end turn - await to ensure category is chosen before returning
+			await _bot_choose_category(bot_id, decision.category, current_dice)
 			return
 		
 		# Show which dice bot is holding (for next roll)
@@ -482,9 +482,9 @@ func _bot_turn_loop(bot_id: String) -> void:
 			})
 			await get_tree().create_timer(1.0).timeout
 	
-	# After 3 rolls, must choose a category
+	# After 3 rolls, must choose a category - await to ensure category is chosen
 	var final_decision: Dictionary = _bot_decide_action(bot_id, current_dice, 0, used)
-	_bot_choose_category(bot_id, final_decision.category, current_dice)
+	await _bot_choose_category(bot_id, final_decision.category, current_dice)
 
 
 func _bot_roll_with_holds(current_dice: Array[int], held_indices: Array[int]) -> Array[int]:
