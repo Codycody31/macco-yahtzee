@@ -14,7 +14,7 @@ env:
 jobs:
   export-windows:
     name: Windows Export
-    runs-on: docker-amd64
+    runs-on: ubuntu-latest-amd64
     container:
       image: barichello/godot-ci:mono-4.5
     steps:
@@ -38,7 +38,7 @@ jobs:
 
   export-linux:
     name: Linux Export
-    runs-on: docker-amd64
+    runs-on: ubuntu-latest-amd64
     container:
       image: barichello/godot-ci:mono-4.5
     steps:
@@ -62,7 +62,7 @@ jobs:
 
   export-android:
     name: Android Export
-    runs-on: docker-amd64
+    runs-on: ubuntu-latest-amd64
     container:
       image: barichello/godot-ci:mono-4.5
     steps:
@@ -87,7 +87,7 @@ jobs:
 
   export-mac:
     name: Mac Export
-    runs-on: docker-amd64
+    runs-on: ubuntu-latest-amd64
     container:
       image: barichello/godot-ci:mono-4.5
     steps:
